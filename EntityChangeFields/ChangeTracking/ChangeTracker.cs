@@ -2,16 +2,16 @@
 using System.Collections.Generic;
 using System.Linq.Expressions;
 
-namespace EntityChangeFields.FieldChanges
+namespace EntityChangeFields.ChangeTracking
 {
-    public class AutoChangeLog<TSource>
+    public class ChangeTracker<TSource>
     {
-        private static Dictionary<string, ChangeConfig<TSource>> TypeChangeConfigDic = new Dictionary<string, ChangeConfig<TSource>>();
+        private static Dictionary<string, TrackingConfig<TSource>> TypeChangeConfigDic = new Dictionary<string, TrackingConfig<TSource>>();
 
-        public static ChangeConfig<TSource> CreateConfig(string name = null)
+        public static TrackingConfig<TSource> CreateConfig(string name = null)
         {
             var typeName = typeof(TSource).FullName;
-            var typeConfig = new ChangeConfig<TSource>()
+            var typeConfig = new TrackingConfig<TSource>()
             {
                 Name = string.IsNullOrEmpty(name) ? typeName : name,
                 TrackingFields = new List<TrackingField<TSource>>(),
@@ -87,7 +87,7 @@ namespace EntityChangeFields.FieldChanges
 
     public static class ChangeTypeConfig
     {
-        public static ChangeConfig<T> SetTrackingField<T, TKey>(this ChangeConfig<T> config,
+        public static TrackingConfig<T> SetTrackingField<T, TKey>(this TrackingConfig<T> config,
             Expression<Func<T, TKey>> fieldSelector, string fieldName = null, 
             Func<T, string> getDescription = null)
         {

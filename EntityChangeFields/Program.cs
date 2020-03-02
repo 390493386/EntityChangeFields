@@ -1,5 +1,4 @@
-﻿using EntityChangeFields.FieldChanges;
-using System;
+﻿using EntityChangeFields.ChangeTracking;
 
 namespace EntityChangeFields
 {
@@ -7,7 +6,7 @@ namespace EntityChangeFields
     {
         static void Main(string[] args)
         {
-            AutoChangeLog<User>.CreateConfig()
+            ChangeTracker<User>.CreateConfig()
                 .SetTrackingField(x => x.Name, fieldName: "姓名")
                 .SetTrackingField(x => x.Account)
                 .SetTrackingField(x => x.Age);
@@ -25,9 +24,9 @@ namespace EntityChangeFields
                 Age = 18,
             };
 
-            var adding = AutoChangeLog<User>.GetChangeRecord(null, user1);
-            var midifying = AutoChangeLog<User>.GetChangeRecord(user1, user2);
-            var deleting = AutoChangeLog<User>.GetChangeRecord(user2, null);
+            var adding = ChangeTracker<User>.GetChangeRecord(null, user1);
+            var midifying = ChangeTracker<User>.GetChangeRecord(user1, user2);
+            var deleting = ChangeTracker<User>.GetChangeRecord(user2, null);
         }
     }
 }

@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace EntityChangeFields.FieldChanges
+namespace EntityChangeFields.ChangeTracking
 {
-    public class ChangeConfig<TSource>
+    public class TrackingConfig<TSource>
     {
         public string Name { get; set; }
         public ICollection<TrackingField<TSource>> TrackingFields { get; set; }

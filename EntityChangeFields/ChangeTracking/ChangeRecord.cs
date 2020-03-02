@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace EntityChangeFields.FieldChanges
+namespace EntityChangeFields.ChangeTracking
 {
     public class ChangeRecord
     {
