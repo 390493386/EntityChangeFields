@@ -1,28 +1,51 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Linq.Expressions;
+using System.Reflection;
 
 namespace EntityChangeFields.ChangeTracking
 {
     public class ChangeTracker<TSource>
+        where TSource : class
     {
         private static Dictionary<string, TrackingConfig<TSource>> TypeChangeConfigDic = new Dictionary<string, TrackingConfig<TSource>>();
 
+        /// <summary>
+        /// 创建类型Track配置
+        /// 默认添加所有属性
+        /// </summary>
         public static TrackingConfig<TSource> CreateConfig(string name = null)
         {
-            var typeName = typeof(TSource).FullName;
+            var sourceType = typeof(TSource);
             var typeConfig = new TrackingConfig<TSource>()
             {
-                Name = string.IsNullOrEmpty(name) ? typeName : name,
+                Name = sourceType.FullName,
+                CustomName = name,
                 TrackingFields = new List<TrackingField<TSource>>(),
             };
-            if (TypeChangeConfigDic.ContainsKey(typeName))
+            string tt = "12";
+            tt.ToString();
+
+            var instanceExpression = Expression.Parameter(sourceType, "instance");
+            foreach (var prop in sourceType.GetProperties())
             {
-                TypeChangeConfigDic[typeName]= typeConfig;
+                var memberExpression = Expression.Property(instanceExpression, prop);
+                var toStringExpression = Expression.Call(memberExpression, prop.PropertyType.GetMethod("ToString", new Type[] { }));
+                var lambdaExpression = Expression.Lambda<Func<TSource, string>>(toStringExpression, instanceExpression);
+                typeConfig.TrackingFields.Add(new TrackingField<TSource> 
+                {
+                    Name = prop.Name,
+                    GetValue = lambdaExpression.Compile(),
+                });
+            }
+            if (TypeChangeConfigDic.ContainsKey(sourceType.FullName))
+            {
+                TypeChangeConfigDic[sourceType.FullName] = typeConfig;
             }
             else
             {
-                TypeChangeConfigDic.Add(typeName, typeConfig );
+                TypeChangeConfigDic.Add(sourceType.FullName, typeConfig );
             }
 
             return typeConfig;
@@ -41,18 +64,18 @@ namespace EntityChangeFields.ChangeTracking
                 return null;
             }
 
-            string action = string.Empty;
+            ChangeType changeType;
             if (originEntity == null && newEntity != null)
             {
-                action = "新增";
+                changeType = ChangeType.Adding;
             }
             else if (originEntity != null && newEntity == null)
             {
-                action = "删除";
+                changeType = ChangeType.Deleting;
             }
             else
             {
-                action = "更新";
+                changeType = ChangeType.Modifying;
             }
 
             var changeFields = new List<ChangeField>();
@@ -64,7 +87,7 @@ namespace EntityChangeFields.ChangeTracking
                 {
                     changeFields.Add(new ChangeField()
                     {
-                        Name = trackingField.Name,
+                        Name = trackingField.CustomName ?? trackingField.Name,
                         OriginValue = trackingField.GetDescription != null ? trackingField.GetDescription(originEntity) : originValue,
                         NewValue = trackingField.GetDescription != null ? trackingField.GetDescription(newEntity) : newValue,
                     });
@@ -76,7 +99,8 @@ namespace EntityChangeFields.ChangeTracking
             }
             var changeRecord = new ChangeRecord()
             {
-                Title = $"{action}{config.Name}",
+                Title = config.CustomName ?? config.Name,
+                Type = changeType,
                 TargetName = typeName,
                 Fields = changeFields,
             };
@@ -87,27 +111,60 @@ namespace EntityChangeFields.ChangeTracking
 
     public static class ChangeTypeConfig
     {
+        /// <summary>
+        /// 添加/修改追踪字段
+        /// </summary>
         public static TrackingConfig<T> SetTrackingField<T, TKey>(this TrackingConfig<T> config,
             Expression<Func<T, TKey>> fieldSelector, string fieldName = null, 
             Func<T, string> getDescription = null)
         {
-            if (string.IsNullOrEmpty(fieldName))
+            var memberExpression = fieldSelector.Body as MemberExpression;
+            var typeFieldName = memberExpression?.Member.Name;
+            if (typeFieldName == null)
             {
-                var memberExpression = fieldSelector.Body as MemberExpression;
-                fieldName = memberExpression?.Member.Name;
+                return config;
             }
-            if (fieldSelector != null)
+            var trackingField = config.TrackingFields.FirstOrDefault(x=>x.Name == typeFieldName);
+            if (trackingField != null)
+            {
+                trackingField.CustomName = fieldName ?? typeFieldName;
+                trackingField.GetDescription = getDescription;
+            }
+            else
             {
                 config.TrackingFields.Add(new TrackingField<T>
                 {
-                    Name = fieldName,
-                    GetValue = (T source) => 
+                    Name = typeFieldName,
+                    CustomName = fieldName?? typeFieldName,
+                    GetValue = (T source) =>
                     {
                         var result = fieldSelector.Compile().Invoke(source);
                         return result?.ToString();
                     },
                     GetDescription = getDescription,
                 });
+            }
+
+            return config;
+        }
+
+        /// <summary>
+        /// 忽略追踪字段
+        /// </summary>
+        public static TrackingConfig<T> IgnorTrackingField<T, TKey>(this TrackingConfig<T> config,
+            Expression<Func<T, TKey>> fieldSelector)
+        {
+            var memberExpression = fieldSelector.Body as MemberExpression;
+            var typeFieldName = memberExpression?.Member.Name;
+            if (typeFieldName == null)
+            {
+                return config;
+            }
+
+            var trackingField = config.TrackingFields.FirstOrDefault(x => x.Name == typeFieldName);
+            if (trackingField != null)
+            {
+                config.TrackingFields.Remove(trackingField);
             }
 
             return config;

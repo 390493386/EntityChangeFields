@@ -1,4 +1,6 @@
 ﻿using EntityChangeFields.ChangeTracking;
+using System;
+using System.Linq.Expressions;
 
 namespace EntityChangeFields
 {
@@ -7,9 +9,7 @@ namespace EntityChangeFields
         static void Main(string[] args)
         {
             ChangeTracker<User>.CreateConfig()
-                .SetTrackingField(x => x.Name, fieldName: "姓名")
-                .SetTrackingField(x => x.Account)
-                .SetTrackingField(x => x.Age);
+                .SetTrackingField(x => x.Name, "姓名");
 
             var user1 = new User
             {
@@ -27,6 +27,8 @@ namespace EntityChangeFields
             var adding = ChangeTracker<User>.GetChangeRecord(null, user1);
             var midifying = ChangeTracker<User>.GetChangeRecord(user1, user2);
             var deleting = ChangeTracker<User>.GetChangeRecord(user2, null);
+
+
         }
     }
 }
